@@ -7,7 +7,7 @@ import argparse, json, os, sys, urllib.request, warnings, bisect
 warnings.filterwarnings("ignore")
 import numpy as np, pandas as pd
 sys.path.insert(0, os.path.dirname(__file__))
-from psr import compute_ratings, to_long, smoothed_psr
+from psr import compute_ratings, to_long, smoothed_psr, backup_flags, predict_margin_qb
 from qb_value import ALIASES, qb_values_before
 
 K, HL, M, CARRY = 14, 12, 8, 0.3
@@ -43,9 +43,11 @@ def main():
     cache = os.path.join(root, ".cache"); os.makedirs(cache, exist_ok=True)
     gpath = a.games or fetch(GAMES_URL, os.path.join(cache, "games.csv"))
     g = pd.read_csv(gpath, low_memory=False)
-    g = g[(g.game_type == "REG") & g.result.notna()]
-    season = a.season or int(g.season.max())
-    g = g[(g.season >= season - 3) & (g.season <= season)]
+    g = g[g.game_type == "REG"]
+    played = g[g.result.notna()]
+    season = a.season or int(played.season.max())
+    sched_full = g[g.season.isin([season, season + 1])]   # includes unplayed games
+    g = played[(played.season >= season - 3) & (played.season <= season)]
     for c in ["home_qb_name", "away_qb_name"]:
         g[c] = g[c].replace(ALIASES)
 
@@ -127,6 +129,42 @@ def main():
     sched_rank = {t: r + 1 for r, t in enumerate(
         sorted(sched_vals, key=lambda x: -sched_vals[x]))}
 
+    # games page: last week's results vs walk-forward projections, next slate projected
+    starts = pd.concat([
+        sg.rename(columns={"home_team": "team", "home_qb_name": "qb"})[["team", "week", "qb"]],
+        sg.rename(columns={"away_team": "team", "away_qb_name": "qb"})[["team", "week", "qb"]],
+    ]).dropna(subset=["qb"])
+    starts["season"] = season
+    flags = backup_flags(starts)
+    pred_r = prev_final if len(weeks) > 1 else prior
+    order_cols = [c for c in ("gameday", "gametime") if c in sg.columns]
+    res_rows = []
+    last = sg[sg.week == week_now].sort_values(order_cols or "week")
+    for _, gm in last.iterrows():
+        pred = predict_margin_qb(pred_r.get(gm.home_team, 50), pred_r.get(gm.away_team, 50),
+                                 flags.get((gm.home_team, season, gm.week), 0),
+                                 flags.get((gm.away_team, season, gm.week), 0))
+        res_rows.append({"away": gm.away_team, "home": gm.home_team,
+                         "as": int(gm.away_score), "hs": int(gm.home_score),
+                         "pred": round(float(pred), 1)})
+
+    up = sched_full[sched_full.result.isna()]
+    up_rows, up_season, up_week = [], None, None
+    if len(up):
+        up_season = int(up.season.min())
+        up = up[up.season == up_season]
+        up_week = int(up.week.min())
+        up = up[up.week == up_week].sort_values(order_cols or "week")
+        r_up = final if up_season == season else \
+            {t: 50 + CARRY * (final.get(t, 50) - 50) for t in final}
+        for _, gm in up.iterrows():
+            row = {"away": gm.away_team, "home": gm.home_team,
+                   "pred": round(float(predict_margin_qb(
+                       r_up.get(gm.home_team, 50), r_up.get(gm.away_team, 50))), 1)}
+            if "spread_line" in up.columns and pd.notna(gm.spread_line):
+                row["vegas"] = round(float(gm.spread_line), 1)
+            up_rows.append(row)
+
     out = []
     for r in rows:
         t = r["team"]
@@ -148,7 +186,9 @@ def main():
         })
     out.sort(key=lambda x: -x["rating"])
     data = {"season": season, "week": int(week_now), "teams": out,
-            "built": pd.Timestamp.utcnow().strftime("%Y-%m-%d")}
+            "built": pd.Timestamp.utcnow().strftime("%Y-%m-%d"),
+            "games": {"resSeason": season, "resWeek": int(week_now), "results": res_rows,
+                      "upSeason": up_season, "upWeek": up_week, "upcoming": up_rows}}
 
     site = os.path.join(root, "site")
     with open(os.path.join(site, "data", "ratings.json"), "w") as f:
@@ -156,7 +196,11 @@ def main():
     tpl = open(os.path.join(site, "template.html")).read()
     html = tpl.replace("/*__PSR_DATA__*/", "window.PSR_DATA=" + json.dumps(data))
     open(os.path.join(site, "index.html"), "w").write(html)
-    print(f"built site for {season} week {week_now}: {len(out)} teams")
+    gtpl = open(os.path.join(site, "template_games.html")).read()
+    open(os.path.join(site, "games.html"), "w").write(
+        gtpl.replace("/*__PSR_DATA__*/", "window.PSR_DATA=" + json.dumps(data)))
+    print(f"built site for {season} week {week_now}: {len(out)} teams, "
+          f"{len(res_rows)} results, {len(up_rows)} upcoming")
 
     # Substack top-10 graphic
     try:

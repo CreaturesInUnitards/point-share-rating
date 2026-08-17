@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Games — Point Share Rating</title>
+<meta name="description" content="PSR game projections, graded in public: every line is generated before kickoff from the open pipeline — hits and misses alike.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#10151C; --paper:#FAFAF8; --card:#FFFFFF; --line:#E4E4DF;
+  --mut:#6B7078; --faint:#9AA0A8;
+  --up:#147D64; --down:#C15A2C;
+}
+*{box-sizing:border-box; margin:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--paper); color:var(--ink); font:15px/1.55 Inter,system-ui,sans-serif;}
+.wrap{max-width:760px; margin:0 auto; padding:28px 16px 64px}
+header{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:6px}
+.mark{font:600 34px/1 "Barlow Condensed",sans-serif; letter-spacing:.5px}
+.mark span{color:var(--up)}
+.wk{font:500 15px "Barlow Condensed",sans-serif; color:var(--mut); letter-spacing:.8px; text-transform:uppercase}
+.sub{color:var(--mut); font-size:13.5px; margin-bottom:26px; max-width:56ch}
+.sub b{color:var(--ink); font-weight:500}
+nav{display:flex; gap:18px; margin:0 0 4px; font:500 14px "Barlow Condensed",sans-serif; letter-spacing:1px; text-transform:uppercase}
+nav a{color:var(--faint); text-decoration:none; padding-bottom:3px}
+nav a.on{color:var(--ink); border-bottom:2px solid var(--ink)}
+nav a:hover{color:var(--ink)}
+.sec{font:600 17px "Barlow Condensed",sans-serif; letter-spacing:.8px; text-transform:uppercase; margin:26px 0 6px}
+.legend{font-size:11px; color:var(--faint); text-transform:uppercase; letter-spacing:.6px; padding:0 12px 6px}
+.tbl{background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden}
+.grow{display:grid; grid-template-columns:1fr 150px 164px; gap:8px; align-items:center;
+  padding:11px 12px; border-top:1px solid var(--line)}
+.grow.res{grid-template-columns:1fr 160px 92px}
+.grow:first-child{border-top:none}
+.mu{font:400 14.5px Inter,sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mu b{font-weight:500}
+.ln{font:500 13px "IBM Plex Mono",monospace; text-align:right}
+.vg{font:400 12px "IBM Plex Mono",monospace; text-align:right; color:var(--faint)}
+.er{font:500 12px "IBM Plex Mono",monospace; text-align:right}
+.er.u{color:var(--up)} .er.d{color:var(--down)} .er.z{color:var(--faint)}
+.sm{display:none}
+footer{margin-top:30px; font-size:12.5px; color:var(--faint); line-height:1.7}
+footer a{color:var(--mut)}
+@media(max-width:560px){
+  .grow{grid-template-columns:1fr 96px; gap:6px}
+  .grow.res{grid-template-columns:1fr 96px 56px}
+  .vg{display:none}
+  .lg{display:none} .sm{display:inline}
+  .mark{font-size:28px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="mark">PSR<span>.</span></div>
+    <div class="wk" id="wk"></div>
+  </header>
+  <p class="sub"><b>Every line here was produced before kickoff</b>, from ratings that use only
+  earlier games — then graded in public, hits and misses alike. Lines are projected margins;
+  the market's line is shown for scale where one exists.</p>
+  <nav>
+    <a href="index.html">Ratings</a>
+    <a class="on" href="#">Games</a>
+    <a href="methods.html">Methods &amp; receipts</a>
+  </nav>
+  <div id="up"></div>
+  <div id="res"></div>
+  <footer>
+    Updated <span id="built"></span> · projections come from the
+    <a href="methods.html">documented model</a>: 1.71 points of margin per PSR, 1.70 for home
+    field, minus the backup-QB penalty where it applies · data from
+    <a href="https://github.com/nflverse">nflverse</a>.
+  </footer>
+</div>
+<script>/*__PSR_DATA__*/</script>
+<script>
+(function(){
+  var D = window.PSR_DATA, G = D.games || {};
+  document.getElementById('wk').textContent = D.season + ' season · games';
+  document.getElementById('built').textContent = D.built;
+  var NAME = {};
+  D.teams.forEach(function(t){ NAME[t.team] = t.name; });
+  function nm(t){ return NAME[t] || t; }
+
+  function matchup(g, scored){
+    function side(team, label, won){
+      var s = scored ? label + ' ' + (team === g.home ? g.hs : g.as) : label;
+      return won ? '<b>' + s + '</b>' : s;
+    }
+    var hWin = scored && g.hs > g.as, aWin = scored && g.as > g.hs;
+    return '<span class="lg">' + side(g.away, nm(g.away), aWin) + ' @ ' + side(g.home, nm(g.home), hWin) + '</span>' +
+           '<span class="sm">' + side(g.away, g.away, aWin) + ' @ ' + side(g.home, g.home, hWin) + '</span>';
+  }
+  function lineTxt(g, p, short){
+    if (Math.abs(p) < 0.05) return "pick 'em";
+    var t = p > 0 ? g.home : g.away;
+    return (short ? t : nm(t)) + ' by ' + Math.abs(p).toFixed(1);
+  }
+  function lineCell(g, p){
+    return '<span class="lg">' + lineTxt(g, p, false) + '</span><span class="sm">' + lineTxt(g, p, true) + '</span>';
+  }
+  function section(id, title, legend, rows){
+    document.getElementById(id).innerHTML =
+      '<div class="sec">' + title + '</div>' +
+      (legend ? '<div class="legend">' + legend + '</div>' : '') +
+      '<div class="tbl">' + rows + '</div>';
+  }
+
+  if (G.upcoming && G.upcoming.length){
+    var rows = G.upcoming.map(function(g){
+      var vg = (g.vegas == null) ? '' : 'mkt: ' + lineTxt(g, g.vegas, false);
+      return '<div class="grow"><div class="mu">' + matchup(g, false) + '</div>' +
+        '<div class="ln">' + lineCell(g, g.pred) + '</div>' +
+        '<div class="vg">' + vg + '</div></div>';
+    }).join('');
+    var note = (G.upSeason !== D.season)
+      ? 'preseason: every team starts at its reversion target'
+      : 'psr line · market line for scale';
+    section('up', G.upSeason + ' · week ' + G.upWeek + ' · projected', note, rows);
+  }
+
+  if (G.results && G.results.length){
+    var hits = 0, errs = [];
+    var rows = G.results.map(function(g){
+      var actual = g.hs - g.as, err = Math.abs(g.pred - actual);
+      errs.push(err);
+      var tie = actual === 0;
+      var hit = (g.pred > 0 && actual > 0) || (g.pred < 0 && actual < 0);
+      if (hit) hits++;
+      return '<div class="grow res"><div class="mu">' + matchup(g, true) + '</div>' +
+        '<div class="ln">' + lineCell(g, g.pred) + '</div>' +
+        '<div class="er ' + (tie ? 'z' : (hit ? 'u' : 'd')) + '">' +
+        (tie ? '—' : (hit ? '✓' : '✗')) + ' ' + err.toFixed(1) + '</div></div>';
+    }).join('');
+    errs.sort(function(a, b){ return a - b; });
+    var med = errs[Math.floor(errs.length / 2)];
+    section('res', G.resSeason + ' · week ' + G.resWeek + ' · results',
+      'called ' + hits + ' of ' + G.results.length + ' winners · median miss ' + med.toFixed(1) + ' pts', rows);
+  }
+})();
+</script>
+</body>
+</html>
