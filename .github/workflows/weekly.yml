@@ -3,6 +3,8 @@ on:
   schedule:
     - cron: "0 14 * * 2"        # Tuesdays 14:00 UTC, after Monday night results land
   workflow_dispatch:             # manual runs from the Actions tab
+  push:
+    branches: [main]
 permissions:
   contents: read
   pages: write

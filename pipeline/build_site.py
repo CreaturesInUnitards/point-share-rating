@@ -141,7 +141,7 @@ def main():
             "schedule": round(r["sch"], 1),
             "scheduleNote": f"{ordinal(sched_rank[t])}-hardest slate",
             "prior": round(r["pri"], 1),
-            "priorNote": f"was {round(prev.get(t, 50), 1)} in '{str(season - 1)[2:]}",
+            "priorNote": f"pull toward {round(50 + CARRY * (prev.get(t, 50) - 50), 1)}",
             "games": r["n"], "qb": qb,
             "qbPts": round((qv - LEAGUE) * PPG, 1),
             "traj": traj[t],
