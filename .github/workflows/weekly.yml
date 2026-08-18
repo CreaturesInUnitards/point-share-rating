@@ -9,6 +9,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  packages: read                 # @creatureshoppe scope on GitHub Packages
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -20,18 +21,43 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      # Data: recompute ratings + post graphics from fresh nflverse results
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install -r pipeline/requirements.txt
-      - run: python pipeline/build_site.py
+      - run: python pipeline/build_site.py   # writes data/ratings.json + post/
       - uses: actions/upload-artifact@v4
         with:
           name: post-graphics
           path: post/
+
+      # Site: build the osyd SPA (ships data/ via Vite publicDir)
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: "@creatureshoppe"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+        env:
+          # GITHUB_TOKEN works if the packages grant this repo access;
+          # otherwise set GH_PACKAGES_TOKEN (classic PAT, read:packages).
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+      - run: pnpm vitest run
+        working-directory: web
+      - run: pnpm build
+        working-directory: web
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site/
+          path: web/dist/
       - id: deployment
         uses: actions/deploy-pages@v4

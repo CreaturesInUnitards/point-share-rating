@@ -1,0 +1,11 @@
+# OS / IDE
+.DS_Store
+.idea/
+
+# pipeline download cache (build_site.py)
+.cache/
+
+# web
+node_modules/
+dist/
+coverage/

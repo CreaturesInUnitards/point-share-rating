@@ -1,0 +1,32 @@
+{
+  "name": "osyd-project",
+  "version": "0.1.0",
+  "private": true,
+  "description": "osyd app scaffolded by create-osyd (Vite + Vitest + ESLint + eslint-plugin-osyd)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "lint": "eslint ",
+    "lint:fix": "eslint  --fix",
+    "typecheck": "tsc --noEmit",
+    "skill:sync": "osyd skill sync"
+  },
+  "dependencies": {
+    "osyd": "npm:@creatureshoppe/osyd@^0.0.10"
+  },
+  "devDependencies": {
+    "eslint": "^9.35.0",
+    "@eslint/js": "^9.35.0",
+    "typescript-eslint": "^8.12.2",
+    "eslint-plugin-osyd": "npm:@creatureshoppe/eslint-plugin-osyd@^1.0.12",
+    "jsdom": "^25.0.1",
+    "typescript": "~5.8.3",
+    "vite-plugin-osyd": "npm:@creatureshoppe/vite-plugin-osyd@^0.0.4",
+    "vite": "^7.1.2",
+    "vitest": "^2.1.3"
+  }
+}

@@ -1,4 +1,6 @@
-"""Weekly build: compute PSR ratings + decomposition, emit site/index.html and post graphics.
+"""Weekly build: compute PSR ratings + decomposition, emit data/ratings.json and post graphics.
+
+The SPA in web/ fetches ratings.json at runtime; this script no longer renders HTML.
 
 Usage: python build_site.py [--season 2025] [--games PATH] [--qbdir PATH]
 Downloads nflverse data when paths aren't supplied (CI mode).
@@ -190,16 +192,11 @@ def main():
             "games": {"resSeason": season, "resWeek": int(week_now), "results": res_rows,
                       "upSeason": up_season, "upWeek": up_week, "upcoming": up_rows}}
 
-    site = os.path.join(root, "site")
-    with open(os.path.join(site, "data", "ratings.json"), "w") as f:
+    datadir = os.path.join(root, "data")
+    os.makedirs(datadir, exist_ok=True)
+    with open(os.path.join(datadir, "ratings.json"), "w") as f:
         json.dump(data, f)
-    tpl = open(os.path.join(site, "template.html")).read()
-    html = tpl.replace("/*__PSR_DATA__*/", "window.PSR_DATA=" + json.dumps(data))
-    open(os.path.join(site, "index.html"), "w").write(html)
-    gtpl = open(os.path.join(site, "template_games.html")).read()
-    open(os.path.join(site, "games.html"), "w").write(
-        gtpl.replace("/*__PSR_DATA__*/", "window.PSR_DATA=" + json.dumps(data)))
-    print(f"built site for {season} week {week_now}: {len(out)} teams, "
+    print(f"built data for {season} week {week_now}: {len(out)} teams, "
           f"{len(res_rows)} results, {len(up_rows)} upcoming")
 
     # Substack top-10 graphic

@@ -1,0 +1,9 @@
+allowBuilds:
+  esbuild: true
+# osyd packages are published fresh to GitHub Packages. If you use pnpm's
+# minimumReleaseAge cooldown, exclude the @creatureshoppe scope so installs
+# don't stall (and so pnpm doesn't auto-edit this file on every install).
+minimumReleaseAgeExclude:
+  - '@creatureshoppe/osyd'
+  - '@creatureshoppe/eslint-plugin-osyd'
+  - '@creatureshoppe/vite-plugin-osyd'
